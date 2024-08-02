@@ -1,0 +1,11 @@
+name: olympic-data-analysis-env
+channels:
+  - defaults
+dependencies:
+  - python=3.12.4
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - scikit-learn
+  - jupyter

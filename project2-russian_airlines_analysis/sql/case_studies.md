@@ -112,3 +112,75 @@ ORDER BY TOTAL_REVENUE;
 | Airbus A321-200    | 8,167,849,600.00  | 4,784,280,900.00 | 0        | 12,952,130,500.00|
 | Bombardier CRJ-200 | 16,163,741,800.00 | 0                | 0        | 16,163,741,800.00|
 | Airbus A319-100    | 13,688,778,400.00 | 8,522,521,700.00 | 0        | 22,211,300,100.00|
+
+
+## CASE 4: --- 
+**Goal**: ---
+```sql
+```
+### Result
+
+
+## CASE 5: Generate a view with details of each flight.
+**Goal**: Bring seat occupancy and all details of each flight to make statistical analysis.
+
+```sql
+CREATE VIEW FLIGHT_DETAIL_VIEW AS
+SELECT F.FLIGHT_ID,
+	AD.AIRCRAFT_MODEL,
+	F.SCHEDULED_DEPARTURE,
+	F.SCHEDULED_ARRIVAL,
+	TO_CHAR(F.SCHEDULED_DEPARTURE, 'Day') AS FLIGHT_DAY,
+	AID.DEPARTURE_CITY,
+	AID.DEPARTURE_AIRPORT_NAME,
+	AID.DEPARTURE_AIRPORT_COORDINATES,
+	AID_2.ARRIVAL_CITY,
+	AID_2.ARRIVAL_AIRPORT_NAME,
+	AID_2.ARRIVAL_AIRPORT_COORDINATES,
+	FSO.SEAT_OCCUPANCY,
+	FSO.SEAT_NUM,
+	TO_CHAR(FSO.SEAT_OCCUPANCY::double precision / FSO.SEAT_NUM::double precision * 100::double precision,
+			'FM999999999.00'::text) AS RATE_OF_SEAT_PERCENTAGE,
+	F.ACTUAL_DEPARTURE - F.SCHEDULED_DEPARTURE AS DELAYED_DEPARTURE,
+	F.SCHEDULED_ARRIVAL - F.SCHEDULED_DEPARTURE AS FLIGHT_DURATION
+FROM FLIGHTS F
+JOIN
+	(SELECT TF.FLIGHT_ID,
+			COUNT(*) AS SEAT_OCCUPANCY,
+			AC.SEAT_NUM
+		FROM TICKET_FLIGHTS TF
+		JOIN FLIGHTS F ON TF.FLIGHT_ID = F.FLIGHT_ID
+		JOIN
+			(SELECT AIRCRAFT_CODE,
+					COUNT(*) AS SEAT_NUM
+				FROM SEATS
+				GROUP BY AIRCRAFT_CODE) AC ON F.AIRCRAFT_CODE = AC.AIRCRAFT_CODE
+		GROUP BY TF.FLIGHT_ID,
+			AC.SEAT_NUM) FSO ON F.FLIGHT_ID = FSO.FLIGHT_ID
+JOIN
+	(SELECT AIRCRAFT_CODE,
+			MODEL ->> 'en'::text AS AIRCRAFT_MODEL
+		FROM AIRCRAFTS_DATA) AD ON F.AIRCRAFT_CODE = AD.AIRCRAFT_CODE
+JOIN
+	(SELECT AIRPORT_CODE,
+			AIRPORT_NAME ->> 'en'::text AS DEPARTURE_AIRPORT_NAME,
+			CITY ->> 'en'::text AS DEPARTURE_CITY,
+			COORDINATES AS DEPARTURE_AIRPORT_COORDINATES
+		FROM AIRPORTS_DATA) AID ON F.DEPARTURE_AIRPORT = AID.AIRPORT_CODE
+JOIN
+	(SELECT AIRPORT_CODE,
+			AIRPORT_NAME ->> 'en'::text AS ARRIVAL_AIRPORT_NAME,
+			CITY ->> 'en'::text AS ARRIVAL_CITY,
+			COORDINATES AS ARRIVAL_AIRPORT_COORDINATES
+		FROM AIRPORTS_DATA) AID_2 ON F.ARRIVAL_AIRPORT = AID_2.AIRPORT_CODE
+WHERE F.ACTUAL_DEPARTURE IS NOT NULL;
+```
+### Result
+
+| FLIGHT_ID | AIRCRAFT_MODEL | SCHEDULED_DEPARTURE       | SCHEDULED_ARRIVAL         | FLIGHT_DAY | DEPARTURE_CITY | DEPARTURE_AIRPORT_NAME         | DEPARTURE_AIRPORT_COORDINATES           | ARRIVAL_CITY  | ARRIVAL_AIRPORT_NAME   | ARRIVAL_AIRPORT_COORDINATES            | SEAT_OCCUPANCY | SEAT_NUM | RATE_OF_SEAT_PERCENTAGE | DELAYED_DEPARTURE | FLIGHT_DURATION |
+|-----------|----------------|---------------------------|---------------------------|------------|----------------|---------------------------------|-----------------------------------------|---------------|-----------------------|-----------------------------------------|----------------|----------|------------------------|-------------------|-----------------|
+| 2         | Airbus A321-200 | 2017-06-13 18:05:00+02    | 2017-06-13 19:00:00+02    | Tuesday    | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 94             | 170      | 55.29                  | 00:06:00          | 00:55:00        |
+| 3         | Airbus A321-200 | 2017-06-13 08:35:00+02    | 2017-06-13 09:30:00+02    | Tuesday    | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 97             | 170      | 57.06                  | 00:03:00          | 00:55:00        |
+| 7         | Airbus A321-200 | 2017-02-10 17:05:00+01    | 2017-02-10 18:00:00+01    | Friday     | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 101            | 170      | 59.41                  | 00:02:00          | 00:55:00        |
+| 8         | Airbus A321-200 | 2016-12-08 17:05:00+01    | 2016-12-08 18:00:00+01    | Thursday   | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 94             | 170      | 55.29                  | 00:05:00          | 00:55:00        |
+| 9         | Airbus A321-200 | 2016-11-26 17:05:00+01    | 2016-11-26 18:00:00+01    | Saturday   | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 116            | 170      | 68.24                  | 00:04:00          | 00:55:00        |

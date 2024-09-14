@@ -114,12 +114,35 @@ ORDER BY TOTAL_REVENUE;
 | Airbus A319-100    | 13,688,778,400.00 | 8,522,521,700.00 | 0        | 22,211,300,100.00|
 
 
-## CASE 4: --- 
-**Goal**: ---
+## CASE 4: Seat Distribution by Aircraft
+**Goal**: Calculate the number and percentage of seats in each fare condition (Economy, Business, Comfort) for different aircraft models.
 ```sql
+SELECT S.AIRCRAFT_CODE,
+	AD.MODEL ->> 'en' AS AIRCRAFT_MODEL,
+	SUM(CASE WHEN S.FARE_CONDITIONS = 'Economy' THEN 1 ELSE 0 END) AS ECONOMY_SEAT_NUM,
+	SUM(CASE WHEN S.FARE_CONDITIONS = 'Business' THEN 1 ELSE 0 END) AS BUSINESS_SEAT_NUM,
+	SUM(CASE WHEN S.FARE_CONDITIONS = 'Comfort' THEN 1 ELSE 0 END) AS COMFORT_SEAT_NUM,
+	COUNT(*) AS TOTAL_SEAT,
+	'%' || ROUND((SUM(CASE WHEN S.FARE_CONDITIONS = 'Economy' THEN 1 ELSE 0 END) * 100.0) / COUNT(*), 2)::VARCHAR(10) AS ECONOMY_SEAT_PERCENTAGE,
+    '%' || ROUND((SUM(CASE WHEN S.FARE_CONDITIONS = 'Business' THEN 1 ELSE 0 END) * 100.0) / COUNT(*), 2)::VARCHAR(10) AS BUSINESS_SEAT_PERCENTAGE,
+    '%' || ROUND((SUM(CASE WHEN S.FARE_CONDITIONS = 'Comfort' THEN 1 ELSE 0 END) * 100.0) / COUNT(*), 2)::VARCHAR(10) AS COMFORT_SEAT_PERCENTAGE
+FROM SEATS S
+JOIN AIRCRAFTS_DATA AD ON S.AIRCRAFT_CODE = AD.AIRCRAFT_CODE
+GROUP BY S.AIRCRAFT_CODE,
+	AD.MODEL ->> 'en';
 ```
 ### Result
-
+| AIRCRAFT_CODE | AIRCRAFT_MODEL         | ECONOMY_SEAT_NUM | BUSINESS_SEAT_NUM | COMFORT_SEAT_NUM | TOTAL_SEAT | ECONOMY_SEAT_PERCENTAGE | BUSINESS_SEAT_PERCENTAGE | COMFORT_SEAT_PERCENTAGE |
+|---------------|------------------------|------------------|-------------------|------------------|------------|-------------------------|--------------------------|-------------------------|
+| 763           | Boeing 767-300          | 192              | 30                | 0                | 222        | %86.49                  | %13.51                   | %0.00                   |
+| SU9           | Sukhoi Superjet-100     | 85               | 12                | 0                | 97         | %87.63                  | %12.37                   | %0.00                   |
+| 321           | Airbus A321-200         | 142              | 28                | 0                | 170        | %83.53                  | %16.47                   | %0.00                   |
+| 319           | Airbus A319-100         | 96               | 20                | 0                | 116        | %82.76                  | %17.24                   | %0.00                   |
+| 320           | Airbus A320-200         | 120              | 20                | 0                | 140        | %85.71                  | %14.29                   | %0.00                   |
+| CN1           | Cessna 208 Caravan      | 12               | 0                 | 0                | 12         | %100.00                 | %0.00                    | %0.00                   |
+| 733           | Boeing 737-300          | 118              | 12                | 0                | 130        | %90.77                  | %9.23                    | %0.00                   |
+| CR2           | Bombardier CRJ-200      | 50               | 0                 | 0                | 50         | %100.00                 | %0.00                    | %0.00                   |
+| 773           | Boeing 777-300          | 324              | 30                | 48               | 402        | %80.60                  | %7.46                    | %11.94                  |
 
 ## CASE 5: Generate a view with details of each flight.
 **Goal**: Bring seat occupancy and all details of each flight to make statistical analysis.

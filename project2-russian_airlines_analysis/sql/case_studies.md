@@ -207,3 +207,31 @@ WHERE F.ACTUAL_DEPARTURE IS NOT NULL;
 | 7         | Airbus A321-200 | 2017-02-10 17:05:00+01    | 2017-02-10 18:00:00+01    | Friday     | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 101            | 170      | 59.41                  | 00:02:00          | 00:55:00        |
 | 8         | Airbus A321-200 | 2016-12-08 17:05:00+01    | 2016-12-08 18:00:00+01    | Thursday   | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 94             | 170      | 55.29                  | 00:05:00          | 00:55:00        |
 | 9         | Airbus A321-200 | 2016-11-26 17:05:00+01    | 2016-11-26 18:00:00+01    | Saturday   | Moscow         | Domodedovo International Airport | (37.90629959106445, 55.40879821777344)  | St. Petersburg | Pulkovo Airport        | (30.262500762939453, 59.80030059814453) | 116            | 170      | 68.24                  | 00:04:00          | 00:55:00        |
+
+## CASE 6: Passenger Trends
+**Goal**: Fetch the number of flights, days, months and routes of each passenger
+
+```sql
+SELECT T.PASSENGER_ID,
+	MAX(T.PASSENGER_NAME) AS PASSENGER_NAME,
+	COUNT(TF.FLIGHT_ID) AS TOTAL_FLIGHTS,
+	SUM(TF.AMOUNT) AS TOTAL_SPEND,
+	STRING_AGG(DISTINCT TF.FARE_CONDITIONS, ', ') AS FARE_CLASSES,	
+	STRING_AGG(DISTINCT CONCAT(F.DEPARTURE_AIRPORT, ' -> ', F.ARRIVAL_AIRPORT), ', ') AS ROUTE,
+	STRING_AGG(DISTINCT TRIM(TO_CHAR(F.SCHEDULED_DEPARTURE, 'Month')), ', ') AS MONTH_NAME,
+	STRING_AGG(DISTINCT TRIM(TO_CHAR(F.SCHEDULED_DEPARTURE, 'Day')), ', ') AS DAY_NAME
+FROM TICKETS T
+JOIN TICKET_FLIGHTS TF ON T.TICKET_NO = TF.TICKET_NO
+JOIN FLIGHTS F ON TF.FLIGHT_ID = F.FLIGHT_ID
+GROUP BY T.PASSENGER_ID
+ORDER BY TOTAL_FLIGHTS DESC;
+```
+
+### Result
+| PASSENGER_ID  | PASSENGER_NAME     | TOTAL_FLIGHTS | TOTAL_SPEND | FARE_CLASSES         | ROUTE                                                                 | MONTH_NAME        | DAY_NAME                                  |
+|---------------|--------------------|---------------|-------------|----------------------|-----------------------------------------------------------------------|-------------------|-------------------------------------------|
+| 0076 080220   | VALENTINA SEMENOVA  | 6             | 172600.00   | Economy              | BQS -> KHV, DYR -> SVO, KHV -> BQS, KHV -> DYR, LED -> KHV, SVO -> LED | June, May         | Saturday, Sunday, Thursday, Wednesday     |
+| 0053 535345   | VALENTINA ILINA     | 6             | 47400.00    | Economy              | PEE -> SVX, PEE -> VKO, SGC -> SVX, SVX -> PEE, SVX -> SGC, VKO -> PEE | March             | Monday, Sunday, Tuesday                  |
+| 0075 447341   | ELENA FEDOROVA      | 6             | 98200.00    | Business, Economy    | BTK -> DME, BZK -> DME, BZK -> SVO, DME -> BTK, DME -> BZK, SVO -> BZK | June, May         | Monday, Thursday, Tuesday                |
+| 0058 471855   | VLADIMIR SOKOLOV    | 6             | 25800.00    | Economy              | AAQ -> EGO, BZK -> EGO, BZK -> VKO, EGO -> AAQ, EGO -> BZK, VKO -> BZK | June, May         | Friday, Saturday, Sunday, Thursday        |
+| 0024 986345   | MARIYA RODIONOVA    | 6             | 25800.00    | Economy              | AAQ -> EGO, BZK -> EGO, BZK -> VKO, EGO -> AAQ, EGO -> BZK, VKO -> BZK | November          | Monday, Sunday, Thursday, Tuesday, Wednesday |

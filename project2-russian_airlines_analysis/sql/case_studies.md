@@ -235,3 +235,104 @@ ORDER BY TOTAL_FLIGHTS DESC;
 | 0075 447341   | ELENA FEDOROVA      | 6             | 98200.00    | Business, Economy    | BTK -> DME, BZK -> DME, BZK -> SVO, DME -> BTK, DME -> BZK, SVO -> BZK | June, May         | Monday, Thursday, Tuesday                |
 | 0058 471855   | VLADIMIR SOKOLOV    | 6             | 25800.00    | Economy              | AAQ -> EGO, BZK -> EGO, BZK -> VKO, EGO -> AAQ, EGO -> BZK, VKO -> BZK | June, May         | Friday, Saturday, Sunday, Thursday        |
 | 0024 986345   | MARIYA RODIONOVA    | 6             | 25800.00    | Economy              | AAQ -> EGO, BZK -> EGO, BZK -> VKO, EGO -> AAQ, EGO -> BZK, VKO -> BZK | November          | Monday, Sunday, Thursday, Tuesday, Wednesday |
+
+
+## CASE 7: Analyze Seating Arrangement
+**Goal**: Analyze seat occupancy percentages by type (aisle, window, middle).
+
+`Before starting the analysis, let's create a view that determines the seat types of each aircraft.`
+
+```sql
+CREATE VIEW SEATING_ARRANGEMENT_VIEW AS
+SELECT AIRCRAFT_CODE, SEAT_NO, FARE_CONDITIONS, 
+	CASE 
+		WHEN (RIGHT(SEAT_NO, 1) IN ('A','F')) AND 
+			 (AIRCRAFT_CODE IN ('319','320','321','733')) THEN 'window seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('B','E')) AND 
+			 (FARE_CONDITIONS = 'Economy') AND 
+			 (AIRCRAFT_CODE IN ('319','320','321','733')) THEN 'middle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('C','D')) AND 
+			 (AIRCRAFT_CODE IN ('319','320','321','733')) THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('A','H')) AND 
+			 (AIRCRAFT_CODE = '763') THEN 'window seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('B','D','F','G')) AND  
+			 (FARE_CONDITIONS = 'Economy') AND 
+			 (AIRCRAFT_CODE = '763') THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) = 'E') AND  
+			 (FARE_CONDITIONS = 'Economy') AND 
+			 (AIRCRAFT_CODE = '763') THEN 'middle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('B','G')) AND  
+			 (FARE_CONDITIONS = 'Business') AND 
+			 (AIRCRAFT_CODE = '763') THEN 'middle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('C','F')) AND  
+			 (FARE_CONDITIONS = 'Business') AND 
+			 (AIRCRAFT_CODE = '763') THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('A','K')) AND 
+			 (AIRCRAFT_CODE = '773') THEN 'window seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('C','D','G','H')) AND 
+			 (AIRCRAFT_CODE = '773') THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('E','F')) AND  
+			 (FARE_CONDITIONS = 'Comfort') AND 
+			 (AIRCRAFT_CODE = '773') THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('B','E','F','J')) AND  
+			 (FARE_CONDITIONS = 'Economy') AND 
+			 (AIRCRAFT_CODE = '773') THEN 'middle seat' 
+		WHEN (RIGHT(SEAT_NO, 1) IN ('A','F')) AND 
+			 (AIRCRAFT_CODE = 'SU9') THEN 'window seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('C','D')) AND 
+			 (AIRCRAFT_CODE = 'SU9') THEN 'aisle seat'
+		WHEN (RIGHT(SEAT_NO, 1) = 'E') AND  
+			 (FARE_CONDITIONS = 'Economy') AND 
+			 (AIRCRAFT_CODE = 'SU9') THEN 'middle seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('A','D')) AND 
+			 (AIRCRAFT_CODE = 'CR2') THEN 'window seat'
+		WHEN (RIGHT(SEAT_NO, 1) IN ('B','C')) AND 
+			 (AIRCRAFT_CODE = 'CR2') THEN 'aisle seat'
+		WHEN (AIRCRAFT_CODE = 'CN1') THEN 'window seat'
+	END AS SEATING_ARRANGEMENT
+FROM SEATS;
+```
+
+```sql
+WITH FLIGHT_SEATING_SUMMARY AS
+	(SELECT F.FLIGHT_ID,
+			F.AIRCRAFT_CODE,
+			SUM(CASE WHEN SAV.SEATING_ARRANGEMENT = 'aisle seat' THEN 1 ELSE 0 END) AS NUMBER_OCCUPIED_AISLE_SEAT,
+			SUM(CASE WHEN SAV.SEATING_ARRANGEMENT = 'window seat' THEN 1 ELSE 0 END) AS NUMBER_OCCUPIED_WINDOW_SEAT,
+			SUM(CASE WHEN SAV.SEATING_ARRANGEMENT = 'middle seat' THEN 1 ELSE 0 END) AS NUMBER_OCCUPIED_MIDDLE_SEAT,
+			COUNT(*) AS NUMBER_OCCUPIED_SEAT
+		FROM FLIGHTS F
+		JOIN BOARDING_PASSES BP ON F.FLIGHT_ID = BP.FLIGHT_ID
+		JOIN SEATING_ARRANGEMENT_VIEW SAV ON F.AIRCRAFT_CODE = SAV.AIRCRAFT_CODE
+		AND BP.SEAT_NO = SAV.SEAT_NO
+		GROUP BY F.FLIGHT_ID,
+			F.AIRCRAFT_CODE),
+	SEAT_SUMMARY AS
+	(SELECT AIRCRAFT_CODE,
+			SUM(CASE WHEN SEATING_ARRANGEMENT = 'window seat' THEN 1 ELSE 0 END) AS TOTAL_WINDOW_SEAT,
+			SUM(CASE WHEN SEATING_ARRANGEMENT = 'middle seat' THEN 1 ELSE 0 END) AS TOTAL_MIDDLE_SEAT,
+			SUM(CASE WHEN SEATING_ARRANGEMENT = 'aisle seat' THEN 1 ELSE 0 END) AS TOTAL_AISLE_SEAT,
+			COUNT(*) AS TOTAL_SEAT
+		FROM SEATING_ARRANGEMENT_VIEW
+		GROUP BY AIRCRAFT_CODE),
+	SEAT_OCCUPANCY_SUMMARY AS
+	(SELECT FSS.FLIGHT_ID,
+			FSS.AIRCRAFT_CODE,
+	 		ROUND((FSS.NUMBER_OCCUPIED_SEAT::numeric / NULLIF(SS.TOTAL_SEAT, 0)::numeric) * 100, 2) AS OCCUPIED_SEAT_PERCENTAGE,
+	 		ROUND((FSS.NUMBER_OCCUPIED_WINDOW_SEAT::numeric / NULLIF(SS.TOTAL_WINDOW_SEAT, 0)::numeric) * 100, 2) AS OCCUPIED_WINDOW_SEAT_PERCENTAGE,
+			ROUND((FSS.NUMBER_OCCUPIED_MIDDLE_SEAT::numeric / NULLIF(SS.TOTAL_MIDDLE_SEAT, 0)::numeric) * 100, 2) AS OCCUPIED_MIDDLE_SEAT_PERCENTAGE,
+	 		ROUND((FSS.NUMBER_OCCUPIED_AISLE_SEAT::numeric / NULLIF(SS.TOTAL_AISLE_SEAT, 0)::numeric) * 100, 2) AS OCCUPIED_AISLE_SEAT_PERCENTAGE
+	FROM FLIGHT_SEATING_SUMMARY FSS
+	JOIN SEAT_SUMMARY SS ON FSS.AIRCRAFT_CODE = SS.AIRCRAFT_CODE)
+SELECT * FROM SEAT_OCCUPANCY_SUMMARY;
+```
+
+### Result
+
+| FLIGHT_ID | AIRCRAFT_CODE | OCCUPIED_SEAT_PERCENTAGE | OCCUPIED_WINDOW_SEAT_PERCENTAGE | OCCUPIED_MIDDLE_SEAT_PERCENTAGE | OCCUPIED_AISLE_SEAT_PERCENTAGE |
+|-----------|----------------|---------------------------|----------------------------------|----------------------------------|---------------------------------|
+| 321       |                | 55.29                     | 51.67                            | 58.33                            | 56.45                           |
+| 321       |                | 57.06                     | 61.67                            | 54.17                            | 54.84                           |
+| 321       |                | 59.41                     | 60.00                            | 68.75                            | 51.61                           |
+| 321       |                | 55.29                     | 48.33                            | 50.00                            | 66.13                           |
+| 321       |                | 68.24                     | 70.00                            | 66.67                            | 67.74                           |

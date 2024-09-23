@@ -336,3 +336,58 @@ SELECT * FROM SEAT_OCCUPANCY_SUMMARY;
 | 321       |                | 59.41                     | 60.00                            | 68.75                            | 51.61                           |
 | 321       |                | 55.29                     | 48.33                            | 50.00                            | 66.13                           |
 | 321       |                | 68.24                     | 70.00                            | 66.67                            | 67.74                           |
+
+## CASE 8: Check Seat Availability for a Flight
+**Goal**: To create a function that checks if a specific seat is available on a flight.
+
+```sql
+DROP FUNCTION IF EXISTS CHECK_SEAT_AVAILABILITY(INT, VARCHAR);
+
+CREATE FUNCTION CHECK_SEAT_AVAILABILITY(FLIGHT_ID_INPUT INT, SEAT_NO_INPUT VARCHAR) 
+RETURNS TEXT AS $$
+
+DECLARE
+SEAT_TAKEN BOOLEAN;	
+BEGIN
+	IF NOT EXISTS(
+		SELECT 1
+		FROM FLIGHTS F
+		WHERE F.FLIGHT_ID = FLIGHT_ID_INPUT 
+	) THEN 
+		RETURN 'Flight ID not found';
+	END IF;
+
+    IF NOT EXISTS(
+		SELECT 1
+		FROM FLIGHTS F
+		JOIN SEATS S ON F.AIRCRAFT_CODE = S.AIRCRAFT_CODE
+		WHERE F.FLIGHT_ID = FLIGHT_ID_INPUT
+			AND S.SEAT_NO = SEAT_NO_INPUT 
+	) THEN 
+		RETURN 'Seat not found on this aircraft';
+	END IF;
+	
+    SELECT EXISTS(
+		SELECT 1
+		FROM BOARDING_PASSES BP
+		WHERE BP.FLIGHT_ID = FLIGHT_ID_INPUT
+			AND BP.SEAT_NO = SEAT_NO_INPUT 
+	) INTO SEAT_TAKEN;
+
+	IF SEAT_TAKEN 
+	THEN 
+		RETURN 'Seat is already taken';
+	ELSE 
+		RETURN 'Seat is available';
+	END IF;
+	
+END;
+$$ LANGUAGE PLPGSQL;
+
+SELECT CHECK_SEAT_AVAILABILITY(5, '5C');
+```
+### Result
+
+| check_seat_availability |
+|-------------------------|
+| Seat is available        |

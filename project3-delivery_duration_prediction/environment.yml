@@ -1,0 +1,22 @@
+name: delivery_duration_prediction_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - scikit-learn
+  - statsmodels
+  - scipy
+  - matplotlib
+  - seaborn
+  - plotly
+  - jupyterlab
+  - ipykernel
+  - pip
+  - pip:
+      - tensorflow
+      - keras
+      - xgboost
+      - lightgbm
+      - missingno

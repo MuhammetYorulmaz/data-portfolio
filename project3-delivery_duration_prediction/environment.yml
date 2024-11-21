@@ -13,10 +13,10 @@ dependencies:
   - plotly
   - jupyterlab
   - ipykernel
+  - xgboost
   - pip
   - pip:
       - tensorflow
       - keras
-      - xgboost
       - lightgbm
       - missingno
